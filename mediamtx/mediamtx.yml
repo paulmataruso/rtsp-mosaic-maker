@@ -1,0 +1,95 @@
+###############################################################################
+# MediaMTX configuration for the Camera Mosaic Platform.
+#
+# Pinned image: bluenviron/mediamtx:1.21.0   (see docker-compose.yml)
+#
+# The app manages per-mosaic paths at runtime via the Control API
+# (/v3/config/paths/*). You normally do NOT edit `paths:` below by hand.
+# Verified against MediaMTX v1.21.0 (apidocs/openapi.yaml).
+###############################################################################
+
+logLevel: info
+logDestinations: [stdout]
+
+# Read/write timeouts and queue sizing for many simultaneous camera inputs.
+readTimeout: 10s
+writeTimeout: 10s
+writeQueueSize: 512
+udpMaxPayloadSize: 1472
+
+###############################################################################
+# Control API — used by the app (camera-mosaic-app) to create/update/delete
+# mosaic paths and to read runtime state. Not published to the host in
+# docker-compose.yml; only reachable on the internal Docker network.
+###############################################################################
+api: yes
+apiAddress: :9997
+
+metrics: yes
+metricsAddress: :9998
+
+pprof: no
+
+###############################################################################
+# RTSP — this is what FFmpeg publishes to and what Roku / LAN clients read.
+###############################################################################
+rtsp: yes
+rtspAddress: :8554
+rtspTransports: [tcp, udp]
+rtspEncryption: "no"
+
+# Optional browser-preview protocols (unused by Roku; safe to leave enabled,
+# they are on-demand and cost nothing when there are no readers).
+hls: yes
+hlsAddress: :8888
+hlsVariant: lowLatency
+hlsAlwaysRemux: no
+
+webrtc: yes
+webrtcAddress: :8889
+
+rtmp: no
+srt: no
+
+###############################################################################
+# Authentication (internal).
+#   - reading a mosaic is open to any LAN client (Roku has no credentials)
+#   - publishing and the Control API are restricted to private IP ranges,
+#     which covers the Docker bridge network the app runs on
+# To lock this down further, replace `user: any` for the publish/api entry
+# with a real user/pass and set MEDIAMTX_PUBLISH_USER / MEDIAMTX_PUBLISH_PASS
+# (and MEDIAMTX_API_USER / MEDIAMTX_API_PASS) in the app's environment.
+###############################################################################
+authMethod: internal
+authInternalUsers:
+  - user: any
+    ips: []
+    permissions:
+      - action: read
+      - action: playback
+
+  - user: any
+    ips:
+      - 127.0.0.1/32
+      - ::1/128
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+      - fd00::/8
+    permissions:
+      - action: publish
+      - action: api
+      - action: metrics
+
+###############################################################################
+# Path defaults + static paths.
+# `paths:` is intentionally empty — the app adds one path per mosaic slug at
+# runtime through the Control API. Add your own entries here if you also want
+# MediaMTX to serve other, non-mosaic streams.
+###############################################################################
+pathDefaults:
+  source: publisher
+  sourceOnDemand: no
+  record: no
+
+paths: {}

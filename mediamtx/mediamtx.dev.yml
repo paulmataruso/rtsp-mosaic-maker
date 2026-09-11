@@ -1,0 +1,56 @@
+###############################################################################
+# MediaMTX config for the DEVELOPMENT stack (docker-compose.dev.yml) only.
+#
+# Same as mediamtx/mediamtx.yml, but:
+#   - the Control API + metrics are reachable (compose publishes 9997/9998) so
+#     `npm run dev` running OUTSIDE Docker can talk to them
+#   - two static paths are pre-declared for the synthetic test cameras
+#
+# The app still creates mosaic paths at runtime via the Control API.
+###############################################################################
+
+logLevel: info
+logDestinations: [stdout]
+
+readTimeout: 10s
+writeTimeout: 10s
+writeQueueSize: 512
+
+api: yes
+apiAddress: :9997
+metrics: yes
+metricsAddress: :9998
+
+rtsp: yes
+rtspAddress: :8554
+rtspTransports: [tcp, udp]
+
+hls: yes
+hlsAddress: :8888
+hlsVariant: lowLatency
+webrtc: yes
+webrtcAddress: :8889
+rtmp: no
+srt: no
+
+# Dev convenience: open. Do NOT copy this to production.
+authMethod: internal
+authInternalUsers:
+  - user: any
+    ips: []
+    permissions:
+      - action: read
+      - action: publish
+      - action: playback
+      - action: api
+      - action: metrics
+
+pathDefaults:
+  source: publisher
+  sourceOnDemand: no
+
+paths:
+  test-cam-1:
+    source: publisher
+  test-cam-2:
+    source: publisher

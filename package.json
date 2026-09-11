@@ -1,0 +1,50 @@
+{
+  "name": "camera-mosaic-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Self-hosted IP camera mosaic streaming platform (FFmpeg + MediaMTX + RTSP for Roku)",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulmataruso/rtsp-mosaic-maker.git"
+  },
+  "bugs": {
+    "url": "https://github.com/paulmataruso/rtsp-mosaic-maker/issues"
+  },
+  "homepage": "https://github.com/paulmataruso/rtsp-mosaic-maker#readme",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "workspaces": [
+    "shared",
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "build:shared": "npm -w shared run build",
+    "build:backend": "npm run build:shared && npm -w backend run build",
+    "build:frontend": "npm run build:shared && npm -w frontend run build",
+    "build": "npm run build:shared && npm -w backend run build && npm -w frontend run build",
+    "dev": "npm run build:shared && concurrently -n backend,frontend -c blue,magenta \"npm -w backend run dev\" \"npm -w frontend run dev\"",
+    "dev:backend": "npm run build:shared && npm -w backend run dev",
+    "dev:frontend": "npm run build:shared && npm -w frontend run dev",
+    "start": "npm -w backend run start",
+    "test": "npm run build:shared && npm -w backend run test",
+    "test:backend": "npm run build:shared && npm -w backend run test",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "check-licenses": "node scripts/check-licenses.cjs",
+    "typecheck": "npm run build:shared && npm -w backend run typecheck && npm -w frontend run typecheck",
+    "db:generate": "npm -w backend run db:generate",
+    "db:migrate": "npm -w backend run db:migrate"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.17.0",
+    "concurrently": "9.1.2",
+    "eslint": "9.17.0",
+    "eslint-plugin-react-hooks": "5.1.0",
+    "globals": "15.14.0",
+    "typescript-eslint": "8.19.0"
+  }
+}

@@ -1,0 +1,87 @@
+name: camera-mosaic
+
+###############################################################################
+# Production deployment.  Bring the whole stack up with:
+#
+#     cp .env.example .env      # then edit PUBLIC_HOST + APP_SECRET
+#     docker compose up -d
+#
+# Then open http://<this-host>:3333
+#
+# Two containers only:
+#   app       - Node/TypeScript backend + built web UI + bundled FFmpeg,
+#               spawns one FFmpeg child process per running mosaic
+#   mediamtx  - RTSP server that distributes the mosaic streams to Roku / LAN
+#
+# See docs/ARCHITECTURE.md for why FFmpeg runs inside the app container rather
+# than as its own service, and docs/GPU.md to enable QSV / NVENC / VAAPI.
+###############################################################################
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: camera-mosaic-app:1.0.0
+    container_name: camera-mosaic-app
+    restart: unless-stopped
+    depends_on:
+      - mediamtx
+    ports:
+      - "${APP_PORT:-3333}:3333"
+    environment:
+      PORT: "3333"
+      # Leave blank to auto-detect from the address you open the UI on (what the
+      # copyable RTSP URLs use). Set it only for reverse-proxy / VPN setups.
+      PUBLIC_HOST: "${PUBLIC_HOST:-}"
+      DATABASE_URL: "file:/data/app.db"
+      MEDIAMTX_API_URL: "http://mediamtx:9997"
+      MEDIAMTX_RTSP_URL: "rtsp://mediamtx:8554"
+      MEDIAMTX_PUBLIC_RTSP_PORT: "${MEDIAMTX_PUBLIC_RTSP_PORT:-8554}"
+      MEDIAMTX_PUBLISH_USER: "${MEDIAMTX_PUBLISH_USER:-}"
+      MEDIAMTX_PUBLISH_PASS: "${MEDIAMTX_PUBLISH_PASS:-}"
+      # Strongly recommended: a long random string so camera passwords encrypt
+      # reproducibly. If empty, a key file is created under the data volume.
+      APP_SECRET: "${APP_SECRET:-}"
+      APP_AUTH_ENABLED: "${APP_AUTH_ENABLED:-false}"
+      APP_AUTH_USERNAME: "${APP_AUTH_USERNAME:-admin}"
+      APP_AUTH_PASSWORD: "${APP_AUTH_PASSWORD:-}"
+      LOG_LEVEL: "${LOG_LEVEL:-info}"
+      FFMPEG_LOG_LEVEL: "${FFMPEG_LOG_LEVEL:-warning}"
+      MAX_CONCURRENT_MOSAICS: "${MAX_CONCURRENT_MOSAICS:-8}"
+      MAX_TOTAL_TILES: "${MAX_TOTAL_TILES:-64}"
+      TZ: "${TZ:-UTC}"
+    volumes:
+      - app-data:/data
+      - app-logs:/logs
+    # --- Intel VAAPI: uncomment to pass the render node into the container ---
+    # (or use `docker compose -f docker-compose.yml -f docker-compose.gpu-intel.yml up -d`)
+    # devices:
+    #   - /dev/dri:/dev/dri
+    # group_add:
+    #   - "video"
+    #   - "render"
+
+  mediamtx:
+    image: bluenviron/mediamtx:1.21.0
+    container_name: camera-mosaic-mediamtx
+    restart: unless-stopped
+    ports:
+      # RTSP — this is the port Roku and other LAN players connect to.
+      - "${MEDIAMTX_PUBLIC_RTSP_PORT:-8554}:8554"
+      - "${MEDIAMTX_PUBLIC_RTSP_PORT:-8554}:8554/udp"
+      # RTP/RTCP for RTSP-over-UDP clients.
+      - "8000:8000/udp"
+      - "8001:8001/udp"
+      # Optional browser preview (HLS). WebRTC needs extra ICE ports — see docs.
+      - "${MEDIAMTX_HLS_PORT:-8888}:8888"
+      # NOTE: 9997 (Control API) and 9998 (metrics) are deliberately NOT
+      # published — they are only reachable from the app on the internal network.
+    volumes:
+      - ./mediamtx/mediamtx.yml:/mediamtx.yml:ro
+    environment:
+      MTX_LOGLEVEL: info
+
+volumes:
+  app-data:
+  app-logs:

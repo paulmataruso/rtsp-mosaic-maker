@@ -1,0 +1,28 @@
+###############################################################################
+# NVIDIA NVENC override.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.gpu-nvidia.yml up -d
+#
+# Requirements on the host:
+#   - NVIDIA driver installed
+#   - NVIDIA Container Toolkit installed and configured
+#       (https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/)
+#   - `docker run --rm --gpus all nvidia/cuda:12.4.0-base-ubuntu22.04 nvidia-smi`
+#     works
+#
+# The base Debian FFmpeg build in this image already includes h264_nvenc; it
+# just needs the driver libraries injected by the toolkit. After starting,
+# open Settings -> "Re-scan encoders" and pick "NVIDIA NVENC — h264_nvenc".
+###############################################################################
+services:
+  app:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, video, compute, utility]
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility,video

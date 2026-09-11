@@ -1,0 +1,75 @@
+:root {
+  color-scheme: dark light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+/* Live-status blink for "running" pills. */
+@keyframes pulse-dot {
+  0% { opacity: 1; }
+  50% { opacity: 0.35; }
+  100% { opacity: 1; }
+}
+.status-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.status-dot--running { background: var(--mantine-color-teal-5); animation: pulse-dot 2s infinite ease-in-out; }
+.status-dot--warning { background: var(--mantine-color-yellow-5); }
+.status-dot--offline { background: var(--mantine-color-red-6); }
+.status-dot--unknown { background: var(--mantine-color-gray-5); }
+
+.mono {
+  font-family: var(--mantine-font-family-monospace);
+  font-size: 0.82rem;
+  word-break: break-all;
+}
+
+.log-line {
+  font-family: var(--mantine-font-family-monospace);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.log-line--warn { color: var(--mantine-color-yellow-4); }
+.log-line--error { color: var(--mantine-color-red-4); }
+.log-line--fatal { color: var(--mantine-color-red-3); font-weight: 600; }
+
+.mosaic-cell {
+  border: 1px dashed var(--mantine-color-dark-3);
+  border-radius: 8px;
+  aspect-ratio: 16 / 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background: var(--mantine-color-dark-6);
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.mosaic-cell--filled {
+  border-style: solid;
+  border-color: var(--mantine-color-brand-7);
+  background: var(--mantine-color-dark-5);
+}
+.mosaic-cell--selected {
+  outline: 2px solid var(--mantine-color-brand-4);
+  outline-offset: 1px;
+}
+.mosaic-cell--over {
+  border-color: var(--mantine-color-teal-5);
+  background: var(--mantine-color-dark-4);
+}

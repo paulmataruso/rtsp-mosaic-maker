@@ -1,0 +1,29 @@
+###############################################################################
+# Intel VAAPI / Quick Sync (QSV) override.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.gpu-intel.yml up -d
+#
+# Requirements on the host:
+#   - An Intel iGPU / Arc GPU with a working render node at /dev/dri/renderD128
+#   - `ls -l /dev/dri` shows card0 + renderD128
+#   - The host user can read the render node (group `render`), OR run rootful
+#     Docker (default)
+#
+# This passes the DRI devices into the container. VAAPI (h264_vaapi) works with
+# the mesa + intel-media drivers already installed in the image. For full QSV
+# (h264_qsv) you additionally need the non-free Intel media driver; rebuild the
+# image with:  --build-arg WITH_INTEL_NONFREE=1   (see docs/GPU.md), or it will
+# transparently fall back to VAAPI.
+#
+# After starting, open Settings -> "Re-scan encoders" and pick
+# "Intel VAAPI — h264_vaapi" (or Quick Sync).
+###############################################################################
+services:
+  app:
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - "video"
+      - "render"
+    environment:
+      LIBVA_DRIVER_NAME: "${LIBVA_DRIVER_NAME:-iHD}"
