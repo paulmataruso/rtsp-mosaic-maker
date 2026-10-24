@@ -41,6 +41,56 @@ export async function buildApp(): Promise<FastifyInstance> {
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
+  // MUST be registered before any app.register(...) call below: Fastify's
+  // encapsulation model snapshots the error handler in scope at the moment a
+  // child context is registered, so routes registered after this point are
+  // the ones that inherit it. Registering it at the bottom of this function
+  // (as this file used to) meant every route silently fell back to Fastify's
+  // own default/fallback error handler — which serializes `{ error: "Bad
+  // Request" }` (a string) against our own `errorResponseSchema` (which
+  // requires `error` to be an object), so every 400/403/404/... response
+  // that hit a route with a declared response schema for that status code
+  // came back as an opaque 500 FST_ERR_FAILED_ERROR_SERIALIZATION instead of
+  // the intended JSON error body. Confirmed via Fastify's own source
+  // (lib/error-handler.js's handleError/fallbackErrorHandler) that
+  // `context.errorHandler` is captured per-route at registration time.
+  app.setErrorHandler((err, req, reply) => {
+    if (err instanceof AppError) {
+      if (!err.expose || err.statusCode >= 500) {
+        logStore.push('error', 'app', `${req.method} ${req.url} -> ${err.code}: ${err.message}`);
+      }
+      reply.code(err.statusCode).send({
+        error: { code: err.code, message: err.message, details: err.details },
+      });
+      return;
+    }
+    if (err instanceof ZodError) {
+      reply.code(400).send({
+        error: {
+          code: 'validation_error',
+          message: 'Request validation failed.',
+          details: err.flatten(),
+        },
+      });
+      return;
+    }
+    if ((err as { validation?: unknown }).validation) {
+      reply.code(400).send({
+        error: {
+          code: 'validation_error',
+          message: err.message,
+          details: (err as { validation?: unknown }).validation,
+        },
+      });
+      return;
+    }
+    getLogger().error({ err, url: req.url }, 'unhandled error');
+    logStore.push('error', 'app', `Unhandled error on ${req.method} ${req.url}: ${err.message}`);
+    reply.code(500).send({
+      error: { code: 'internal_error', message: 'An unexpected error occurred.' },
+    });
+  });
+
   // Make the request's Host available to services (for rendering public URLs).
   app.addHook('onRequest', async (req) => {
     enterRequestContext({ host: req.hostname });
@@ -120,43 +170,6 @@ export async function buildApp(): Promise<FastifyInstance> {
       reply.code(404).send({ error: { code: 'not_found', message: 'Route not found.' } });
     });
   }
-
-  app.setErrorHandler((err, req, reply) => {
-    if (err instanceof AppError) {
-      if (!err.expose || err.statusCode >= 500) {
-        logStore.push('error', 'app', `${req.method} ${req.url} -> ${err.code}: ${err.message}`);
-      }
-      reply.code(err.statusCode).send({
-        error: { code: err.code, message: err.message, details: err.details },
-      });
-      return;
-    }
-    if (err instanceof ZodError) {
-      reply.code(400).send({
-        error: {
-          code: 'validation_error',
-          message: 'Request validation failed.',
-          details: err.flatten(),
-        },
-      });
-      return;
-    }
-    if ((err as { validation?: unknown }).validation) {
-      reply.code(400).send({
-        error: {
-          code: 'validation_error',
-          message: err.message,
-          details: (err as { validation?: unknown }).validation,
-        },
-      });
-      return;
-    }
-    getLogger().error({ err, url: req.url }, 'unhandled error');
-    logStore.push('error', 'app', `Unhandled error on ${req.method} ${req.url}: ${err.message}`);
-    reply.code(500).send({
-      error: { code: 'internal_error', message: 'An unexpected error occurred.' },
-    });
-  });
 
   return app;
 }
