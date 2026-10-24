@@ -1,7 +1,7 @@
 ###############################################################################
 # NVIDIA NVENC override.
 #
-#   docker compose -f docker-compose.yml -f docker-compose.gpu-nvidia.yml up -d
+#   docker compose -f docker-compose.yml -f docker-compose.nvidia.yml up -d
 #
 # Requirements on the host:
 #   - NVIDIA driver installed

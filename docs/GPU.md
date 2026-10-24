@@ -8,9 +8,9 @@ the matching runtime.
 | Encoder | Vendor | Compose override | Needs |
 |---|---|---|---|
 | `libx264` | CPU | — | nothing |
-| `h264_vaapi` | Intel iGPU / Arc | `docker-compose.gpu-intel.yml` | `/dev/dri` + mesa/intel VA driver (in the image) |
-| `h264_qsv` | Intel Quick Sync | `docker-compose.gpu-intel.yml` | `/dev/dri` + `libvpl` + non‑free `intel-media-va-driver` |
-| `h264_nvenc` | NVIDIA | `docker-compose.gpu-nvidia.yml` | NVIDIA driver + NVIDIA Container Toolkit |
+| `h264_vaapi` | Intel iGPU / Arc | `docker-compose.intel.yml` | `/dev/dri` + mesa/intel VA driver (in the image) |
+| `h264_qsv` | Intel Quick Sync | `docker-compose.intel.yml` | `/dev/dri` + `libvpl` + non‑free `intel-media-va-driver` |
+| `h264_nvenc` | NVIDIA | `docker-compose.nvidia.yml` | NVIDIA driver + NVIDIA Container Toolkit |
 
 Compositing always runs in software; only the final encode is offloaded (the
 frame is `hwupload`ed for VAAPI/QSV, passed in system memory for NVENC).
@@ -32,7 +32,7 @@ frame is `hwupload`ed for VAAPI/QSV, passed in system memory for NVENC).
 ### Run
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.gpu-nvidia.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.nvidia.yml up -d
 ```
 
 The override adds a `deploy.resources.reservations.devices` GPU request and the
@@ -64,7 +64,7 @@ should show **NVIDIA NVENC — h264_nvenc → available**; pick it on a mosaic.
 ### Run
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.gpu-intel.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.intel.yml up -d
 ```
 
 The override adds `devices: [/dev/dri:/dev/dri]`, `group_add: [video, render]`,

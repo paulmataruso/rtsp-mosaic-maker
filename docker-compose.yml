@@ -14,7 +14,8 @@ name: camera-mosaic
 #   mediamtx  - RTSP server that distributes the mosaic streams to Roku / LAN
 #
 # See docs/ARCHITECTURE.md for why FFmpeg runs inside the app container rather
-# than as its own service, and docs/GPU.md to enable QSV / NVENC / VAAPI.
+# than as its own service, and docs/GPU.md to enable QSV / NVENC / VAAPI
+# (docker-compose.intel.yml / docker-compose.nvidia.yml).
 ###############################################################################
 
 services:
@@ -55,7 +56,7 @@ services:
       - app-data:/data
       - app-logs:/logs
     # --- Intel VAAPI: uncomment to pass the render node into the container ---
-    # (or use `docker compose -f docker-compose.yml -f docker-compose.gpu-intel.yml up -d`)
+    # (or use `docker compose -f docker-compose.yml -f docker-compose.intel.yml up -d`)
     # devices:
     #   - /dev/dri:/dev/dri
     # group_add:

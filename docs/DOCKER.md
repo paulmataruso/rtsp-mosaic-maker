@@ -7,8 +7,8 @@
 | `Dockerfile` | Multi‑stage: `build` (deps + esbuild backend + Vite frontend) → `deps` (prod `node_modules`) → `runtime` (Debian slim + FFmpeg + VA drivers + fonts, non‑root, `tini`, `HEALTHCHECK`). |
 | `docker-compose.yml` | Production stack: `app` + `mediamtx`. |
 | `docker-compose.dev.yml` | MediaMTX + two synthetic RTSP test cameras; run the app on the host. |
-| `docker-compose.gpu-nvidia.yml` | NVENC override. |
-| `docker-compose.gpu-intel.yml` | VAAPI / QSV override (passes `/dev/dri`). |
+| `docker-compose.nvidia.yml` | NVENC override. |
+| `docker-compose.intel.yml` | VAAPI / QSV override (passes `/dev/dri`). |
 | `mediamtx/mediamtx.yml` | MediaMTX base config (API on, auth, RTSP; paths managed at runtime). |
 
 ## Start / stop / upgrade
@@ -111,7 +111,7 @@ See `docs/GPU.md`. Quick version:
 
 ```bash
 # Intel
-docker compose -f docker-compose.yml -f docker-compose.gpu-intel.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.intel.yml up -d
 # NVIDIA
-docker compose -f docker-compose.yml -f docker-compose.gpu-nvidia.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.nvidia.yml up -d
 ```

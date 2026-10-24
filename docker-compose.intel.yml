@@ -1,7 +1,7 @@
 ###############################################################################
 # Intel VAAPI / Quick Sync (QSV) override.
 #
-#   docker compose -f docker-compose.yml -f docker-compose.gpu-intel.yml up -d
+#   docker compose -f docker-compose.yml -f docker-compose.intel.yml up -d
 #
 # Requirements on the host:
 #   - An Intel iGPU / Arc GPU with a working render node at /dev/dri/renderD128
