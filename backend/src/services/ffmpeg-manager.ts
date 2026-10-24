@@ -65,6 +65,15 @@ class MosaicRunner {
   private watchdog: NodeJS.Timeout | undefined;
   private lastProgressAt = 0;
   private degradedReason: string | null = null;
+  /**
+   * Set just before the no-first-frame watchdog calls `proc.stop()`. FfmpegProcess
+   * classifies every SIGTERM-killed exit as `reason: 'stopped'` (it can't tell a
+   * deliberate user stop from us killing a hung start) — without this flag, onExit()
+   * would treat a watchdog kill exactly like `requestStop()` and silently give up
+   * with no retry and no visible error, instead of going through the normal
+   * backoff/retry path like every other start failure.
+   */
+  private watchdogFailureReason: string | null = null;
 
   constructor(
     readonly mosaicId: string,
@@ -239,12 +248,14 @@ class MosaicRunner {
     const graceMs = Math.max(15000, settings.rtspReadTimeoutMs * 2);
     this.watchdog = setTimeout(() => {
       if (this.lastProgressAt === 0 && this.proc === proc) {
+        const reason = `no output after ${Math.round(graceMs / 1000)}s — camera(s) slow to start or unreachable`;
         logStore.push(
           'warn',
           'ffmpeg',
           `No output after ${Math.round(graceMs / 1000)}s — treating start as failed.`,
           { mosaicId: this.mosaicId, slug: plan.slug },
         );
+        this.watchdogFailureReason = reason;
         void proc.stop(2000);
       }
     }, graceMs);
@@ -314,13 +325,20 @@ class MosaicRunner {
     this.proc = undefined;
     this.metrics = emptyMetrics();
 
-    if (this.stopRequested || exit.reason === 'stopped') {
+    // A watchdog-triggered kill reports the same reason:'stopped' FfmpegProcess
+    // uses for a deliberate stop (it can only see that we sent SIGTERM), but it
+    // must NOT be treated like requestStop() — it's a failed start and needs to
+    // go through the normal retry path below, not settle silently in 'stopped'.
+    const watchdogReason = this.watchdogFailureReason;
+    this.watchdogFailureReason = null;
+
+    if (this.stopRequested || (exit.reason === 'stopped' && !watchdogReason)) {
       this.state = 'stopped';
       this.emit();
       return;
     }
 
-    this.lastError = exit.reason;
+    this.lastError = watchdogReason ?? exit.reason;
     // Blame specific cameras so the next attempt substitutes a placeholder.
     for (const pos of exit.culpritPositions) {
       const cameraId = this.plan?.positionCameraId[pos];
@@ -329,7 +347,7 @@ class MosaicRunner {
     // Ask the monitor to re-check every referenced camera right now, so a dead
     // one is flagged well before the next 30s health sweep and the next
     // restart can render it as an OFFLINE placeholder.
-    if (this.restartCount >= 1 && this.probeCameras) {
+    if ((this.restartCount >= 1 || watchdogReason) && this.probeCameras) {
       this.probeCameras(this.plan?.referencedCameraIds ?? []);
     }
 
@@ -337,13 +355,13 @@ class MosaicRunner {
     logStore.push(
       'error',
       'ffmpeg',
-      `Mosaic "/${this.plan?.slug}" stopped: ${exit.reason}` +
+      `Mosaic "/${this.plan?.slug}" stopped: ${this.lastError}` +
         (exit.code !== null ? ` (exit ${exit.code})` : '') +
         (stderrTail ? ` — ${stderrTail}` : ''),
       { mosaicId: this.mosaicId, slug: this.plan?.slug ?? null },
     );
 
-    this.scheduleRestart(exit.reason);
+    this.scheduleRestart(this.lastError);
   }
 
   private scheduleRestart(reason: string): void {
